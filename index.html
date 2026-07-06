@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <title>LỚP HỌC CÔNG GIÁO</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#ff4d94">
+  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/149/149071.png">
+
+  <!-- SỬA LỖI: Bẫy lỗi toàn cục - trì hoãn để showCustomAlert kịp định nghĩa -->
+  <script>
+    window.onerror = function(msg, url, line) {
+      if (msg && msg.indexOf('zaloJSV2') !== -1) return true;
+      setTimeout(() => {
+        if (typeof window.showCustomAlert === 'function') {
+          window.showCustomAlert('HỆ THỐNG LỖI', 'Dòng ' + line + ': ' + msg, '❌');
+        }
+      }, 200);
+      return false;
+    };
+  </script>
+
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+
+<!-- TOAST MẠNG -->
+<div id="network-toast" class="hidden" style="position:fixed;top:20px;left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:20px;color:white;font-weight:bold;z-index:99999;box-shadow:0 5px 15px rgba(0,0,0,0.2);transition:0.3s;"></div>
+
+<!-- SPLASH SCREEN -->
+<div id="splash-screen" class="full-screen flex-center" style="position:fixed;inset:0;background:var(--bg);z-index:99999;transition:opacity 0.5s ease;">
+  <img id="custom-splash-img" src="" class="custom-spinner" style="display:none;max-width:80px;border-radius:50%;">
+  <div id="default-spinner" class="spinner" style="display:none;"></div>
+  <script>
+    var savedSplashLogo = localStorage.getItem('savedSplashLogo');
+    if (savedSplashLogo) {
+      var _si = document.getElementById('custom-splash-img');
+      _si.src = savedSplashLogo; _si.style.display = 'block';
+    } else {
+      document.getElementById('default-spinner').style.display = 'block';
+    }
+  </script>
+  <p class="title-pink" style="margin-top:20px;font-size:16px;">Đang tải dữ liệu...</p>
+</div>
+
+<!-- MÀN HÌNH BẢO TRÌ -->
+<div id="maintenance-screen" class="full-screen flex-center hidden" style="position:fixed;inset:0;background:var(--bg);z-index:99998;text-align:center;padding:20px;">
+  <div onclick="window.revealMaintenancePin()" style="position:absolute;top:0;left:0;width:60px;height:60px;cursor:default;opacity:0;z-index:100001;"></div>
+  <div class="fade-in">
+    <i class="fas fa-tools" style="font-size:70px;color:var(--pink);margin-bottom:20px;"></i>
+    <h1 class="title-pink" style="font-size:26px;">LỚP HỌC CÔNG GIÁO</h1>
+    <div id="maintenance-text-display" style="font-size:16px;margin-top:15px;line-height:1.6;color:var(--text-light);white-space:pre-wrap;background:var(--soft);padding:20px;border-radius:15px;border:1px dashed var(--pink);"></div>
+    <div id="maintenance-pin-zone" class="hidden" style="margin-top:30px;border-top:1px solid var(--border);padding-top:20px;">
+      <p style="font-size:12px;margin-bottom:10px;color:var(--pink);font-weight:bold;">LỐI VÀO CỦA BOSS</p>
+      <input type="password" id="maintenance-pin-input" placeholder="Nhập PIN" style="width:180px;text-align:center;border:2px solid var(--pink);">
+      <button class="btn-royal" onclick="window.verifyMaintenancePin()" style="width:auto;padding:10px 25px;">XÁC NHẬN</button>
+    </div>
+  </div>
+</div>
+
+<!-- INTRO OVERLAY -->
+<div id="intro-overlay" class="hidden"><img src="" id="intro-img"></div>
+
+<!-- MÀN HÌNH ĐĂNG NHẬP -->
+<div id="login-screen" class="full-screen flex-center hidden">
+  <div class="login-box shadow-lux fade-in secure-box">
+    <div class="secure-scanline" aria-hidden="true"></div>
+
+    <!-- BANNER BẢO MẬT -->
+    <div class="secure-banner">
+      <span class="secure-dot" aria-hidden="true"></span>
+      <i class="fas fa-shield-alt" aria-hidden="true"></i>
+      <span>KẾT NỐI BẢO MẬT &bull; CHỐNG HACKER</span>
+    </div>
+
+    <div class="branding-header">
+      <img src="" class="dynamic-logo hidden" id="main-login-logo">
+      <h1 class="logo-pink dynamic-app-name">KIM MIN LAI</h1>
+    </div>
+
+    <div class="secure-input-wrap">
+      <i class="fas fa-user" aria-hidden="true"></i>
+      <input type="text" id="username" placeholder="ID đăng nhập" autocomplete="username">
+    </div>
+    <div class="secure-input-wrap">
+      <i class="fas fa-lock" aria-hidden="true"></i>
+      <input type="password" id="password" placeholder="Mật khẩu" autocomplete="current-password" onkeypress="if(event.key==='Enter') handleLogin()">
+    </div>
+
+    <button id="login-btn" class="btn-royal" onclick="handleLogin()">VÀO HỆ THỐNG</button>
+
+    <!-- TÍCH ĐỒNG Ý NỘI QUY -->
+    <label class="rules-agree-row" for="agree-rules">
+      <input type="checkbox" id="agree-rules" class="rules-checkbox">
+      <span>Tôi đồng ý với <button type="button" class="rules-link" onclick="openRulesAgreement(event)">Nội quy</button></span>
+    </label>
+
+    <div class="secure-footer">
+      <i class="fas fa-fingerprint" aria-hidden="true"></i>
+      <span>Dữ liệu được mã hóa &bull; Phiên đăng nhập an toàn</span>
+    </div>
+
+    <p onclick="openSupportMaster()" style="cursor:pointer;color:var(--pink);margin-top:12px;font-weight:bold;">Hỗ trợ &amp; Tra cứu</p>
+  </div>
+</div>
+
+<!-- MODAL NỘI QUY -->
+<div id="rules-agreement-modal" class="overlay-dark flex-center hidden" onclick="if(event.target===this) closeRulesAgreement()">
+  <div class="modal-box rules-modal">
+    <div class="rules-modal-header">
+      <i class="fas fa-scroll" aria-hidden="true"></i>
+      <h3>NỘI QUY</h3>
+    </div>
+
+    <!-- ✏️ PHẦN NỘI DUNG NỘI QUY: Em tự chỉnh sửa nội dung bên dưới nhé -->
+    <div class="rules-content">
+      <p>1. Nội quy số 1 (tự chỉnh sửa tại đây)...</p>
+      <p>2. Nội quy số 2 (tự chỉnh sửa tại đây)...</p>
+      <p>3. Nội quy số 3 (tự chỉnh sửa tại đây)...</p>
+      <p>4. Nội quy số 4 (tự chỉnh sửa tại đây)...</p>
+    </div>
+
+    <!-- ✍️ PHẦN KÝ TÊN: Em sửa tên ký ở dòng dưới -->
+    <div class="rules-signature">
+      <span class="rules-signature-label">Ký tên</span>
+      <span class="rules-signature-name">Anh Quân</span>
+    </div>
+
+    <button class="btn-royal" style="margin-top:15px;" onclick="agreeRulesAndClose()">TÔI ĐÃ ĐỌC &amp; ĐỒNG Ý</button>
+  </div>
+</div>
+
+<!-- MÀN HÌNH CHÍNH -->
+<div id="main-screen" class="hidden main-layout fade-in">
+  <header class="top-bar">
+    <div class="header-left" style="display:flex;align-items:center;gap:10px;">
+      <img src="" id="user-avatar" class="avt-circle">
+      <div class="boss-info">
+        <h2 id="display-name-real" style="font-size:16px;color:var(--pink);font-weight:900;"></h2>
+        <span id="display-role" class="dynamic-app-name" style="font-size:11px;color:var(--text-light);font-weight:bold;"></span>
+      </div>
+    </div>
+    <button class="menu-trigger" onclick="toggleSidebar(true)" style="background:none;border:none;font-size:24px;cursor:pointer;color:var(--pink);">
+      &#9776; <span id="main-noti-dot" class="noti-dot hidden"></span>
+    </button>
+  </header>
+
+  <main class="content-area">
+
+    <!-- TAB: HỒ SƠ -->
+    <div id="tab-myprofile" class="tab-pane hidden">
+      <h3 class="title-pink">HỒ SƠ CỦA TÔI</h3>
+      <div class="card shadow-lux fb-profile-box" style="margin:0 auto;padding-bottom:20px;">
+        <div class="fb-cover"></div>
+        <div class="fb-avatar-wrap"><img id="my-tab-avatar" src="" class="fb-avatar"></div>
+        <div style="padding:0 20px;text-align:center;margin-top:10px;">
+          <h2 id="my-tab-name" style="color:var(--pink);margin-bottom:5px;font-weight:900;">...</h2>
+          <p id="my-tab-birthyear" style="color:#FF9800;font-weight:bold;font-size:12px;margin-bottom:5px;"></p>
+          <p id="my-tab-id" style="color:var(--text-light);font-weight:bold;font-size:13px;margin-bottom:10px;">...</p>
+          <p id="my-tab-quote" class="hidden" style="color:var(--pink);font-size:13px;font-weight:bold;font-style:italic;margin-bottom:10px;word-break:break-word;"></p>
+          <p id="my-tab-bio" style="color:var(--text);font-size:13px;margin-bottom:15px;padding:10px;background:var(--bg);border-radius:10px;word-break:break-word;">...</p>
+          <div id="my-tab-cohort" class="hidden" style="display:inline-block;background:var(--soft);padding:5px 15px;border-radius:20px;font-size:12px;font-weight:bold;color:var(--pink);margin-bottom:20px;"></div>
+          <button class="btn-royal anim-pulse" style="background:#9C27B0;" onclick="openSelfEdit()">SỬA HỒ SƠ</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: KẾT NỐI -->
+    <div id="tab-connect" class="tab-pane hidden">
+      <h3 class="title-pink" style="text-align:center;">KẾT NỐI BẠN BÈ</h3>
+      <div class="search-bar-wrap mb-15">
+        <input type="text" id="connect-search-id" placeholder="Nhập ID bạn bè..." onkeypress="if(event.key==='Enter') searchConnectUser()">
+        <button onclick="searchConnectUser()">TÌM</button>
+      </div>
+      <div class="qr-bank-card shadow-lux mb-15">
+        <div id="my-bank-name" class="qr-bank-name">
+          <div class="skeleton-box" style="height:20px;width:120px;border-radius:5px;display:inline-block;"></div>
+        </div>
+        <div class="qr-bank-body"><img id="connect-my-qr" src="" class="qr-code-img"></div>
+        <div class="qr-bank-footer">
+          <button class="btn-royal" style="background:rgba(255,255,255,0.2);padding:12px;width:48%;border:1px solid rgba(255,255,255,0.5);" onclick="copyMyLink()">COPY LINK</button>
+          <button class="btn-royal anim-pulse" style="background:#00e676;padding:12px;width:48%;color:#111;box-shadow:0 0 15px rgba(0,230,118,0.5);" onclick="startQRScanner()">QUÉT MÃ</button>
+        </div>
+      </div>
+      <div id="qr-scanner-container" class="hidden mb-15 card shadow-lux" style="border:2px solid #00e676;">
+        <h4 style="text-align:center;color:#00e676;margin-bottom:10px;">Hướng camera vào mã QR</h4>
+        <div id="connect-qr-reader" style="width:100%;border-radius:15px;overflow:hidden;"></div>
+        <button class="btn-royal" style="background:#dc3545;margin-top:15px;padding:12px;" onclick="stopQRScanner()">ĐÓNG</button>
+      </div>
+      <div id="friend-requests-zone" class="card shadow-lux mb-15 hidden" style="border-left:4px solid #FF9800;padding:15px;">
+        <h4 style="color:#FF9800;margin-bottom:10px;">Lời mời kết bạn</h4>
+        <div id="friend-requests-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+      </div>
+      <div class="card shadow-lux">
+        <h4 style="color:var(--pink);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;">
+          <span>Danh bạ</span>
+          <span id="friend-count-badge" style="background:var(--soft);color:var(--pink);font-size:12px;padding:3px 8px;border-radius:10px;">0</span>
+        </h4>
+        <div id="my-friends-list" class="tt-list"></div>
+      </div>
+    </div>
+
+    <!-- TAB: SỔ ĐIỂM -->
+    <div id="tab-manage" class="tab-pane hidden">
+      <h3 class="title-pink">SỔ ĐIỂM TỔNG HỢP</h3>
+      <button id="btn-export-excel" class="btn-royal" style="background:#4CAF50;margin-bottom:15px;" onclick="exportExcel()">XUẤT FILE EXCEL</button>
+      <div class="table-frame scroll-x shadow-lux">
+        <table class="master-table">
+          <thead>
+            <tr>
+              <th class="sticky-col" rowspan="2">HỌ TÊN</th>
+              <th colspan="5">HK 1</th>
+              <th colspan="5">HK 2</th>
+              <th rowspan="2">CẢ NĂM</th>
+            </tr>
+            <tr><th>M</th><th>15P</th><th>1T</th><th>THI</th><th>TB</th><th>M</th><th>15P</th><th>1T</th><th>THI</th><th>TB</th></tr>
+          </thead>
+          <tbody id="master-grade-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAB: THEO DÕI -->
+    <div id="tab-tracking" class="tab-pane hidden">
+      <h3 class="title-pink">THEO DÕI HOẠT ĐỘNG</h3>
+      <div class="card shadow-lux scroll-x mb-15">
+        <table class="master-table">
+          <thead><tr><th>Tên</th><th>Role</th><th>Status</th><th>Vào</th><th>Ra</th></tr></thead>
+          <tbody id="tracking-body"></tbody>
+        </table>
+      </div>
+      <div id="title-grade-logs" style="display:none;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <h3 class="title-pink" style="margin:0;">LỊCH SỬ SỬA ĐIỂM</h3>
+        <button class="btn-royal" onclick="window.clearGradeLogs()" style="width:auto;padding:8px 15px;background:#dc3545;font-size:12px;border-radius:10px;">DỌN SẠCH</button>
+      </div>
+      <div class="card shadow-lux scroll-x mb-15" id="card-grade-logs" style="display:none;border:2px dashed #9C27B0;background:var(--soft);">
+        <table class="master-table">
+          <thead><tr><th>Thời gian</th><th>Người sửa</th><th>Học sinh</th><th>Kỳ</th></tr></thead>
+          <tbody id="grade-logs-body"></tbody>
+        </table>
+      </div>
+      <h3 class="title-pink">HỘP THƯ YÊU CẦU</h3>
+      <div class="card shadow-lux" style="border:2px dashed #FF9800;background:var(--soft);">
+        <div id="admin-inbox-list" style="display:flex;flex-direction:column;gap:10px;max-height:400px;overflow-y:auto;">
+          <div class="skeleton-box" style="height:100px;width:100%;border-radius:10px;"></div>
+          <div class="skeleton-box" style="height:100px;width:100%;border-radius:10px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: THÔNG BÁO -->
+    <div id="tab-rules" class="tab-pane hidden">
+      <h3 class="title-pink">THÔNG BÁO</h3>
+      <div class="card shadow-lux">
+        <div id="rules-editor-zone" class="hidden" style="margin-bottom:15px;border-bottom:2px dashed var(--border);padding-bottom:15px;">
+          <textarea id="rules-input" rows="4" style="width:100%;border-radius:10px;padding:10px;border:1px solid var(--pink);outline:none;background:var(--bg);color:var(--text);" placeholder="Nhập nội dung..."></textarea>
+          <div style="display:flex;gap:10px;margin-top:10px;">
+            <select id="announce-target" style="flex:1;padding:10px;border-radius:10px;border:1px solid var(--pink);outline:none;background:var(--bg);color:var(--text);">
+              <option value="all">Tất Cả</option>
+              <option value="hs">Học Sinh</option>
+              <option value="gv">Giáo Viên</option>
+            </select>
+            <button class="btn-royal" onclick="saveAnnouncement()" style="flex:1;">ĐĂNG</button>
+          </div>
+        </div>
+        <div id="rules-display" style="display:flex;flex-direction:column;gap:10px;max-height:500px;overflow-y:auto;"></div>
+      </div>
+    </div>
+
+    <!-- TAB: CHAT -->
+    <div id="tab-chat" class="tab-pane hidden">
+      <h3 class="title-pink">GÓC CHÉM GIÓ</h3>
+      <div style="display:flex;gap:5px;margin-bottom:10px;">
+        <button id="btn-chat-global" class="btn-royal" style="flex:1;background:var(--pink);padding:10px;font-size:12px;" onclick="openChatChannel('global')">CHUNG</button>
+        <button id="btn-chat-private" class="btn-royal" style="flex:1;background:var(--border);color:var(--text);padding:10px;font-size:12px;position:relative;" onclick="openChatChannel('private')">RIÊNG <span id="private-noti-dot" class="noti-dot hidden" style="position:absolute;top:2px;right:2px;"></span></button>
+        <button id="btn-chat-group" class="btn-royal" style="flex:1;background:var(--border);color:var(--text);padding:10px;font-size:12px;" onclick="openChatChannel('group')">NHÓM</button>
+      </div>
+
+      <!-- CHAT CHUNG -->
+      <div id="chat-global-zone">
+        <div class="card shadow-lux" style="height:400px;display:flex;flex-direction:column;">
+          <div id="global-chat-box" style="flex:1;overflow-y:auto;padding:10px;background:var(--bg);border-radius:10px;margin-bottom:10px;display:flex;flex-direction:column;gap:8px;">
+            <div class="skeleton-box" style="height:60px;width:65%;align-self:flex-start;border-radius:20px;"></div>
+            <div class="skeleton-box" style="height:50px;width:50%;align-self:flex-end;border-radius:20px;"></div>
+            <div class="skeleton-box" style="height:80px;width:75%;align-self:flex-start;border-radius:20px;"></div>
+          </div>
+          <div id="global-typing-indicator" class="hidden" style="font-size:11px;color:#888;margin-bottom:5px;font-style:italic;"></div>
+          <div style="display:flex;gap:5px;align-items:center;">
+            <button class="btn-royal" style="width:40px;height:40px;background:transparent;color:var(--pink);font-size:20px;padding:0;border:none;" onclick="triggerChatImage('global')"><i class="fas fa-image"></i></button>
+            <input type="text" id="global-chat-input" maxlength="500" placeholder="Nhắn vào làng..." style="flex:1;border-radius:20px;padding:10px;outline:none;background:var(--bg);color:var(--text);border:1px solid var(--border);" oninput="onChatInput('global')" onkeypress="if(event.key==='Enter') sendGlobalChat()">
+            <button class="btn-royal" style="border-radius:50%;width:40px;height:40px;padding:0;display:flex;justify-content:center;align-items:center;" onclick="sendGlobalChat()"><i class="fas fa-paper-plane"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- CHAT RIÊNG -->
+      <div id="chat-private-zone" class="hidden">
+        <div id="private-search-view" style="background:var(--card);border-radius:15px;overflow:hidden;padding-bottom:10px;">
+          <div id="tt-online-zone" class="tt-top-scroll"></div>
+          <div id="recent-chat-list" class="tt-list"></div>
+        </div>
+        <div id="private-chat-area" class="card shadow-lux hidden" style="height:420px;display:flex;flex-direction:column;position:relative;">
+          <div style="display:flex;align-items:center;border-bottom:1px solid var(--border);padding-bottom:5px;margin-bottom:10px;">
+            <button onclick="closePrivateChat()" style="background:transparent;border:none;font-size:20px;cursor:pointer;margin-right:10px;color:var(--text);">&#8617;</button>
+            <h4 id="private-chat-title" style="color:var(--pink);flex:1;font-size:14px;margin:0;">...</h4>
+          </div>
+          <div id="private-chat-box" style="flex:1;overflow-y:auto;padding:10px;background:var(--bg);border-radius:10px;margin-bottom:10px;display:flex;flex-direction:column;gap:8px;"></div>
+          <div id="private-typing-indicator" class="hidden" style="font-size:11px;color:#888;margin-bottom:5px;font-style:italic;"></div>
+          <div id="private-chat-input-zone" style="display:flex;gap:5px;align-items:center;">
+            <button class="btn-royal" style="width:40px;height:40px;background:transparent;color:#ff0050;font-size:20px;padding:0;border:none;" onclick="triggerChatImage('private')"><i class="fas fa-image"></i></button>
+            <input type="text" id="private-chat-input" maxlength="500" placeholder="Gửi tin nhắn..." style="flex:1;border-radius:20px;padding:10px;outline:none;background:var(--bg);color:var(--text);border:1px solid var(--border);" oninput="onChatInput('private')" onkeypress="if(event.key==='Enter') sendPrivateChat()">
+            <button class="btn-royal" style="border-radius:50%;width:40px;height:40px;padding:0;display:flex;justify-content:center;align-items:center;background:#ff0050;" onclick="sendPrivateChat()"><i class="fas fa-paper-plane"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- CHAT NHÓM -->
+      <div id="chat-group-zone" class="hidden">
+        <div id="group-list-view" style="background:var(--card);border-radius:15px;overflow:hidden;padding:10px 0;">
+          <button class="btn-royal" style="background:#ff0050;margin:0 15px 15px 15px;width:calc(100% - 30px);border-radius:10px;" onclick="openCreateGroupModal()">TẠO NHÓM MỚI</button>
+          <div id="my-groups-list" class="tt-list"></div>
+        </div>
+        <div id="group-chat-area" class="card shadow-lux hidden" style="height:420px;display:flex;flex-direction:column;position:relative;">
+          <div style="display:flex;align-items:center;border-bottom:1px solid var(--border);padding-bottom:5px;margin-bottom:10px;">
+            <button onclick="closeGroupChat()" style="background:transparent;border:none;font-size:20px;cursor:pointer;margin-right:10px;color:var(--text);">&#8617;</button>
+            <h4 id="group-chat-title" style="color:#ff0050;flex:1;font-size:14px;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">...</h4>
+            <button onclick="openGroupManageModal()" style="background:transparent;border:none;font-size:20px;cursor:pointer;color:#ff0050;">&#9776;</button>
+          </div>
+          <div id="group-chat-box" style="flex:1;overflow-y:auto;padding:10px;background:var(--bg);border-radius:10px;margin-bottom:10px;display:flex;flex-direction:column;gap:8px;"></div>
+          <div id="group-typing-indicator" class="hidden" style="font-size:11px;color:#888;margin-bottom:5px;font-style:italic;"></div>
+          <div id="group-chat-input-zone" style="display:flex;gap:5px;align-items:center;">
+            <button class="btn-royal" style="width:40px;height:40px;background:transparent;color:#ff0050;font-size:20px;padding:0;border:none;" onclick="triggerChatImage('group')"><i class="fas fa-image"></i></button>
+            <input type="text" id="group-chat-input" maxlength="500" placeholder="Gửi vào nhóm..." style="flex:1;border-radius:20px;padding:10px;outline:none;background:var(--bg);color:var(--text);border:1px solid var(--border);" oninput="onChatInput('group')" onkeypress="if(event.key==='Enter') sendGroupChat()">
+            <button class="btn-royal" style="border-radius:50%;width:40px;height:40px;padding:0;display:flex;justify-content:center;align-items:center;" onclick="sendGroupChat()"><i class="fas fa-paper-plane"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TRUNG TÂM GIÁM SÁT (ADMIN) -->
+      <div id="admin-spy-zone" class="card shadow-lux hidden" style="margin-top:15px;border:2px dashed #dc3545;background:var(--soft);">
+        <h4 style="color:#dc3545;margin-bottom:5px;">TRUNG TÂM GIÁM SÁT</h4>
+        <input type="text" id="spy-search" placeholder="Lọc..." style="padding:10px;border-radius:10px;border:1px solid #dc3545;width:100%;background:var(--bg);color:var(--text);" onkeyup="filterAdminSpy(this)">
+        <div id="admin-convo-list" style="max-height:300px;overflow-y:auto;margin-top:10px;display:flex;flex-direction:column;gap:5px;"></div>
+      </div>
+    </div>
+
+    <!-- TAB: CẤP ẢNH -->
+    <div id="tab-avatar" class="tab-pane hidden">
+      <h3 class="title-pink">CẤP ẢNH</h3>
+      <div class="card shadow-lux" style="text-align:center;">
+        <input type="text" id="avatar-target-id" placeholder="ID nhận ảnh">
+        <label class="btn-royal" style="cursor:pointer;background:#ff85c1;display:block;margin:15px 0;">
+          CHỌN ẢNH<input type="file" id="grant-file" class="hidden" accept="image/*" onchange="previewGrantImg(this)">
+        </label>
+        <img id="grant-preview-img" src="" class="hidden" style="width:100px;height:100px;border-radius:50%;margin:0 auto 15px;object-fit:cover;border:3px solid var(--pink);">
+        <button class="btn-royal" onclick="grantAvatar()">LƯU</button>
+      </div>
+    </div>
+
+    <!-- TAB: TÀI KHOẢN -->
+    <div id="tab-users" class="tab-pane hidden">
+      <h3 class="title-pink">TÀI KHOẢN</h3>
+      <div class="card shadow-lux mb-15">
+        <input type="text" id="new-id" placeholder="ID mới">
+        <input type="text" id="new-name" placeholder="Tên thật">
+        <input type="password" id="new-pass" placeholder="Mật khẩu (tối thiểu 6 ký tự)">
+        <select id="new-role" style="background:var(--bg);color:var(--text);">
+          <option value="hs">Học Sinh</option>
+          <option value="gv">Giáo Viên</option>
+        </select>
+        <button class="btn-royal" onclick="createNewUser()">TẠO TÀI KHOẢN</button>
+      </div>
+      <input type="text" id="search-user" placeholder="Nhập ID/Tên để tìm..." onkeyup="searchStudent()" style="margin-bottom:15px;width:100%;padding:10px;border-radius:10px;border:1px solid var(--pink);outline:none;background:var(--bg);color:var(--text);">
+      <div class="card shadow-lux mb-15">
+        <h4>Giáo Viên</h4>
+        <div class="scroll-x"><table class="master-table"><tbody id="list-gv"></tbody></table></div>
+      </div>
+      <div class="card shadow-lux mb-15">
+        <h4>Học Sinh</h4>
+        <div class="scroll-x"><table class="master-table"><tbody id="list-hs"></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- TAB: GIAO DIỆN -->
+    <div id="tab-branding" class="tab-pane hidden">
+      <h3 class="title-pink">GIAO DIỆN</h3>
+      <div class="card shadow-lux">
+        <h4 style="color:var(--pink);margin-bottom:10px;">APP ĐĂNG NHẬP</h4>
+        <input type="text" id="brand-name-input" placeholder="Tên ứng dụng">
+        <label class="btn-royal" style="cursor:pointer;background:#ff85c1;display:block;margin:10px 0;">
+          ĐỔI LOGO<input type="file" id="brand-logo-file" class="hidden" accept="image/*" onchange="previewBrandLogo(this)">
+        </label>
+        <img id="brand-preview-logo" src="" class="hidden" style="max-width:120px;border-radius:15px;border:2px dashed var(--pink);margin:10px auto;display:block;">
+        <hr style="margin:20px 0;border:1px solid var(--border);">
+        <h4 style="color:var(--pink);margin-bottom:10px;">MÀN HÌNH CHỜ</h4>
+        <label class="btn-royal" style="cursor:pointer;background:#4CAF50;display:block;margin:10px 0;">
+          ĐỔI ẢNH CHỜ<input type="file" id="splash-logo-file" class="hidden" accept="image/*" onchange="previewSplashLogo(this)">
+        </label>
+        <img id="splash-preview-logo" src="" class="hidden" style="max-width:80px;border-radius:50%;border:2px dashed #4CAF50;margin:10px auto;display:block;">
+        <button class="btn-royal" onclick="saveBranding()" style="margin-top:20px;">LƯU TẤT CẢ</button>
+      </div>
+    </div>
+
+    <!-- TAB: KẾT QUẢ CÁ NHÂN -->
+    <div id="tab-personal" class="tab-pane hidden">
+      <div class="card shadow-lux">
+        <h3 class="title-pink">KẾT QUẢ CÁ NHÂN</h3>
+        <div id="personal-grades-ui"></div>
+      </div>
+    </div>
+
+    <!-- TAB: ĐIỂM DANH -->
+    <div id="tab-attendance" class="tab-pane hidden fade-in">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
+        <h3 class="title-pink" style="margin:0;">ĐIỂM DANH LỚP</h3>
+        <div style="display:flex;gap:5px;">
+          <button class="btn-royal" style="width:auto;padding:8px 12px;background:#1877F2;font-size:12px;border-radius:12px;" onclick="window.openAttendanceStats()">THỐNG KÊ</button>
+          <button id="btn-add-week" class="btn-royal hidden" style="width:auto;padding:8px 12px;background:#4CAF50;font-size:12px;border-radius:12px;" onclick="window.createNewWeek()">THÊM TUẦN</button>
+        </div>
+      </div>
+      <div id="attendance-week-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(105px,1fr));gap:10px;margin-bottom:20px;"></div>
+      <div id="attendance-detail-zone" class="hidden">
+        <div class="card shadow-lux" style="padding:15px;border-top:5px solid var(--pink);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;flex-wrap:wrap;gap:10px;">
+            <h4 id="att-current-week-title" style="color:var(--pink);margin:0;">ĐANG XEM: TUẦN ...</h4>
+            <div style="display:flex;gap:5px;">
+              <button class="btn-royal" style="width:auto;padding:6px 12px;font-size:11px;background:#673AB7;border-radius:8px;" onclick="window.openQRScanner()">QUÉT QR</button>
+              <button id="btn-lock-session" class="btn-royal hidden" style="width:auto;padding:6px 12px;font-size:11px;background:#FF9800;border-radius:8px;" onclick="window.toggleSessionLock()">CHỐT SỔ</button>
+              <button id="btn-delete-session" class="btn-royal hidden" style="width:auto;padding:6px 12px;font-size:11px;background:#dc3545;border-radius:8px;" onclick="window.deleteCurrentWeek()">XÓA</button>
+            </div>
+          </div>
+          <div class="scroll-x"><table class="master-table" style="width:100%;"><tbody id="attendance-body"></tbody></table></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: CÀI ĐẶT -->
+    <div id="tab-settings" class="tab-pane hidden">
+      <h3 class="title-pink">CÀI ĐẶT</h3>
+      <div class="card shadow-lux" style="display:flex;justify-content:space-between;align-items:center;border-left:4px solid var(--text);">
+        <span style="font-weight:bold;">Chế Độ Tối:</span>
+        <label class="switch">
+          <input type="checkbox" id="dark-mode-toggle" onchange="toggleDarkMode(this)">
+          <span class="slider round"></span>
+        </label>
+      </div>
+      <div id="admin-security-zone" class="hidden" style="margin-top:20px;">
+        <h4 style="color:#FF9800;margin-bottom:10px;">BẢO MẬT &amp; HỆ THỐNG</h4>
+        <div class="card shadow-lux" style="display:flex;justify-content:space-between;align-items:center;border-left:4px solid #FF9800;background:rgba(255,152,0,0.1);">
+          <span style="font-weight:bold;color:#FF9800;">Bật/Tắt Bảo Trì:</span>
+          <label class="switch">
+            <input type="checkbox" id="maintenance-toggle" onchange="toggleMaintenanceMode(this)">
+            <span class="slider round"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- SIDEBAR MENU -->
+  <aside id="sidebar" class="sidebar-right">
+    <div class="side-head" style="padding:20px;font-weight:bold;font-size:18px;color:var(--pink);display:flex;justify-content:space-between;border-bottom:1px solid var(--border);">
+      <span>MENU</span>
+      <button onclick="toggleSidebar(false)" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text);">&#10005;</button>
+    </div>
+    <nav class="side-nav">
+      <button id="nav-myprofile" class="nav-btn hidden" onclick="switchTab('myprofile')" style="color:#FF9800;border-color:#FF9800;">Trang Cá Nhân</button>
+      <button id="nav-connect" class="nav-btn hidden" onclick="switchTab('connect')" style="color:#1877F2;border-color:#1877F2;">Tìm Bạn &amp; Kết Nối</button>
+      <button id="nav-chat" class="nav-btn hidden" onclick="switchTab('chat')">Góc chém gió <span id="menu-noti-dot" class="noti-dot hidden"></span></button>
+      <button id="nav-personal" class="nav-btn hidden" onclick="switchTab('personal')">Kết quả Cá nhân</button>
+      <button id="nav-manage" class="nav-btn hidden" onclick="switchTab('manage')">Sổ điểm tổng</button>
+      <button id="nav-attendance" class="nav-btn hidden" onclick="switchTab('attendance'); window.loadAttendanceSessions();">Điểm danh lớp</button>
+      <button id="nav-rules" class="nav-btn hidden" onclick="switchTab('rules')">Thông báo</button>
+      <button id="nav-tracking" class="nav-btn hidden" onclick="switchTab('tracking')">Theo dõi</button>
+      <button id="nav-avatar" class="nav-btn hidden" onclick="switchTab('avatar')">Cấp ảnh</button>
+      <button id="nav-users" class="nav-btn hidden" onclick="switchTab('users')">Tài khoản</button>
+      <button id="nav-branding" class="nav-btn hidden" onclick="switchTab('branding')">Giao diện</button>
+      <button id="nav-settings" class="nav-btn hidden" onclick="switchTab('settings')">Cài đặt</button>
+      <button id="nav-clear-data" class="nav-btn hidden" onclick="openClearDataAuth()" style="color:#dc3545;border-color:#dc3545;">Quản lý Dữ liệu</button>
+      <button class="nav-btn" onclick="handleLogout()">Thoát</button>
+    </nav>
+  </aside>
+</div>
+
+<!-- ===== MODALS ===== -->
+
+<!-- XEM HỒ SƠ -->
+<div id="user-profile-modal" class="hidden overlay-dark flex-center" style="padding:15px;">
+  <div class="modal-box shadow-lux fade-in" style="width:100%;max-width:350px;padding:30px 20px;position:relative;">
+    <button onclick="toggleModal('user-profile-modal',false)" style="position:absolute;top:15px;right:15px;background:none;border:none;font-size:20px;color:var(--text-light);cursor:pointer;">&#10005;</button>
+    <div style="text-align:center;margin-bottom:15px;">
+      <img id="profile-avatar" src="" class="hidden" style="width:110px;height:110px;border-radius:50%;object-fit:cover;margin:0 auto;border:4px solid var(--soft);box-shadow:0 5px 15px rgba(0,0,0,0.1);cursor:pointer;" onclick="viewFullAvatar()">
+    </div>
+    <h2 id="profile-name" style="color:var(--pink);margin-bottom:5px;font-weight:900;">...</h2>
+    <p id="profile-birthyear" style="color:#FF9800;font-weight:bold;font-size:12px;margin-bottom:5px;"></p>
+    <p id="profile-id" style="color:var(--text-light);font-weight:bold;font-size:13px;margin-bottom:10px;">...</p>
+    <p id="profile-quote" class="hidden" style="color:var(--pink);font-size:13px;font-weight:bold;font-style:italic;margin-bottom:10px;word-break:break-word;"></p>
+    <p id="profile-bio" style="color:var(--text);font-size:13px;margin-bottom:15px;padding:10px;background:var(--bg);border-radius:10px;word-break:break-word;">...</p>
+    <div id="profile-cohort" class="hidden" style="display:inline-block;background:var(--soft);padding:5px 15px;border-radius:20px;font-size:12px;font-weight:bold;color:var(--pink);margin-bottom:20px;"></div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <button id="profile-self-edit-btn" class="btn-royal hidden" style="background:#9C27B0;" onclick="openSelfEdit()">SỬA HỒ SƠ</button>
+      <button id="profile-friend-btn" class="btn-royal hidden">KẾT BẠN</button>
+      <button id="profile-chat-btn" class="btn-royal hidden" style="background:#4CAF50;">NHẮN TIN</button>
+    </div>
+  </div>
+</div>
+
+<!-- SỬA HỒ SƠ CÁ NHÂN -->
+<div id="self-edit-modal" class="hidden overlay-dark flex-center">
+  <div class="modal-box shadow-lux fade-in">
+    <h3 class="title-pink">SỬA HỒ SƠ</h3>
+    <input type="number" id="self-birthyear" placeholder="Năm sinh (VD: 2009)">
+    <textarea id="self-quote" rows="2" placeholder="Câu nói yêu thích..."></textarea>
+    <textarea id="self-bio" rows="2" placeholder="Tiểu sử bản thân..."></textarea>
+    <button class="btn-royal" onclick="saveSelfProfile()">LƯU HỒ SƠ</button>
+    <button class="btn-text" onclick="toggleModal('self-edit-modal',false)">HỦY</button>
+  </div>
+</div>
+
+<!-- QUẢN LÝ NHÓM -->
+<div id="group-manage-modal" class="hidden overlay-dark flex-center" style="z-index:100000;">
+  <div class="modal-box shadow-lux fade-in" style="position:relative;width:90%;max-width:400px;padding:25px 20px;">
+    <button onclick="window.toggleModal('group-manage-modal',false)" style="position:absolute;top:15px;right:15px;background:none;border:none;font-size:20px;color:var(--text-light);cursor:pointer;">&#10005;</button>
+    <h3 style="color:#ff0050;margin-bottom:10px;">QUẢN LÝ NHÓM</h3>
+    <p id="group-admin-status" style="font-size:12px;color:var(--text-light);margin-bottom:15px;font-weight:bold;"></p>
+    <div id="group-avatar-zone" class="hidden" style="margin-bottom:15px;border-bottom:1px solid var(--border);padding-bottom:15px;display:flex;flex-direction:column;gap:8px;">
+      <label class="btn-royal" style="cursor:pointer;background:#ff85c1;display:block;font-size:12px;">
+        ĐỔI ẢNH NHÓM<input type="file" id="group-avt-file" class="hidden" accept="image/*" onchange="window.uploadGroupAvatar()">
+      </label>
+      <button class="btn-royal" style="background:#1877F2;padding:10px;font-size:12px;" onclick="window.copyGroupLink()">COPY LINK MỜI</button>
+    </div>
+    <div id="group-add-member-zone" class="hidden" style="margin-bottom:15px;display:flex;gap:10px;">
+      <input type="text" id="new-member-id" placeholder="Nhập ID thành viên..." style="flex:1;border:2px solid var(--border);border-radius:10px;padding:10px;outline:none;background:var(--bg);color:var(--text);">
+      <button class="btn-royal" style="width:auto;padding:10px 15px;border-radius:10px;font-size:12px;" onclick="window.addGroupMember()">THÊM</button>
+    </div>
+    <h4 style="text-align:left;color:var(--pink);margin-bottom:10px;font-size:14px;">THÀNH VIÊN:</h4>
+    <ul id="group-member-list" style="list-style:none;padding:0;margin:0;max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:10px;background:var(--bg);"></ul>
+  </div>
+</div>
+
+<!-- SỬA ĐIỂM -->
+<div id="score-modal" class="hidden overlay-dark flex-center">
+  <div class="modal-box shadow-lux fade-in">
+    <h3 class="title-pink">SỬA ĐIỂM</h3>
+    <p style="font-size:14px;font-weight:bold;margin-bottom:15px;" id="score-u-name"></p>
+    <input type="hidden" id="score-u-id">
+    <div class="grid-2">
+      <select id="score-term" onchange="loadStudentScoreIntoModal()" style="background:var(--bg);color:var(--text);">
+        <option value="1">HK I</option>
+        <option value="2">HK II</option>
+      </select>
+      <select id="score-conduct" style="background:var(--bg);color:var(--text);">
+        <option value="Tốt">H.Kiểm: Tốt</option>
+        <option value="Khá">H.Kiểm: Khá</option>
+        <option value="TB">H.Kiểm: TB</option>
+        <option value="Yếu">H.Kiểm: Yếu</option>
+      </select>
+    </div>
+    <div class="grid-4" style="margin-top:10px;">
+      <input type="number" id="score-m" placeholder="M" min="0" max="10" step="0.1">
+      <input type="number" id="score-15p" placeholder="15p" min="0" max="10" step="0.1">
+      <input type="number" id="score-1t" placeholder="1T" min="0" max="10" step="0.1">
+      <input type="number" id="score-thi" placeholder="Thi" min="0" max="10" step="0.1">
+    </div>
+    <button class="btn-royal" onclick="confirmSaveScore()">LƯU ĐIỂM</button>
+    <button class="btn-text" onclick="toggleModal('score-modal',false)">HỦY</button>
+  </div>
+</div>
+
+<!-- XEM ẢNH FULL -->
+<div id="avatar-viewer-modal" class="hidden overlay-dark flex-center" onclick="toggleModal('avatar-viewer-modal',false)">
+  <div class="modal-box viewer-box fade-in" onclick="event.stopPropagation()">
+    <img src="" id="full-avatar-img">
+  </div>
+</div>
+
+<!-- SOẠN PHẢN HỒI HỖ TRỢ -->
+<div id="reply-support-modal" class="hidden overlay-dark flex-center" style="z-index:100000;">
+  <div class="modal-box shadow-lux fade-in" style="border-top:6px solid #FF9800;padding:30px 20px;border-radius:25px;">
+    <div style="font-size:50px;margin-bottom:15px;">✍️</div>
+    <h3 style="color:#FF9800;font-weight:900;letter-spacing:1px;margin-bottom:5px;">SOẠN PHẢN HỒI</h3>
+    <p style="font-size:14px;color:var(--text);margin-bottom:20px;">Đang giải quyết cho: <b id="reply-u-name" style="color:var(--pink);">...</b></p>
+    <input type="hidden" id="reply-req-key">
+    <input type="hidden" id="reply-secret">
+    <textarea id="reply-reason-input" rows="4" placeholder="Nhập câu trả lời của Boss (VD: Mật khẩu mới của em là 123456)" style="border:1px solid #FF9800;border-radius:15px;padding:12px;margin-bottom:20px;background:rgba(255,152,0,0.05);color:var(--text);outline:none;width:100%;box-sizing:border-box;"></textarea>
+    <button class="btn-royal" style="background:#FF9800;border-radius:15px;" onclick="window.confirmReplySupport()">GỬI PHẢN HỒI</button>
+    <button class="btn-text" onclick="window.toggleModal('reply-support-modal',false)" style="margin-top:10px;font-weight:bold;">HỦY BỎ</button>
+  </div>
+</div>
+
+<!-- KHÓA TÀI KHOẢN -->
+<div id="lock-reason-modal" class="hidden overlay-dark flex-center" style="z-index:100000;">
+  <div class="modal-box shadow-lux fade-in" style="border-top:6px solid #FF9800;padding:30px 20px;border-radius:25px;">
+    <div style="font-size:50px;margin-bottom:15px;">🔒</div>
+    <h3 style="color:#FF9800;font-weight:900;letter-spacing:1px;margin-bottom:5px;">KHÓA TÀI KHOẢN</h3>
+    <p style="font-size:15px;font-weight:bold;margin-bottom:20px;color:var(--text);" id="lock-u-name">...</p>
+    <input type="hidden" id="lock-u-id">
+    <textarea id="lock-reason-input" rows="3" placeholder="Nhập lý do khóa..." style="border:1px solid #FF9800;border-radius:15px;padding:12px;margin-bottom:20px;background:rgba(255,152,0,0.05);color:var(--text);outline:none;"></textarea>
+    <button class="btn-royal" style="background:#FF9800;border-radius:15px;" onclick="confirmLockUser()">TIẾN HÀNH KHÓA</button>
+    <button class="btn-text" onclick="toggleModal('lock-reason-modal',false)" style="margin-top:10px;font-weight:bold;">HỦY BỎ</button>
+  </div>
+</div>
+
+<!-- XÓA TÀI KHOẢN -->
+<div id="delete-reason-modal" class="hidden overlay-dark flex-center" style="z-index:100000;">
+  <div class="modal-box shadow-lux fade-in" style="border-top:6px solid #dc3545;padding:30px 20px;border-radius:25px;">
+    <div style="font-size:50px;margin-bottom:15px;">🗑️</div>
+    <h3 style="color:#dc3545;font-weight:900;letter-spacing:1px;margin-bottom:5px;">XÓA TÀI KHOẢN</h3>
+    <p style="font-size:15px;font-weight:bold;margin-bottom:20px;color:var(--text);" id="delete-u-name">...</p>
+    <input type="hidden" id="delete-u-id">
+    <textarea id="delete-reason-input" rows="3" placeholder="Lý do xóa vĩnh viễn..." style="border:1px solid #dc3545;border-radius:15px;padding:12px;margin-bottom:20px;background:rgba(220,53,69,0.05);color:var(--text);outline:none;"></textarea>
+    <button class="btn-royal" style="background:#dc3545;border-radius:15px;" onclick="confirmDeleteUser()">XÓA VĨNH VIỄN</button>
+    <button class="btn-text" onclick="toggleModal('delete-reason-modal',false)" style="margin-top:10px;font-weight:bold;">HỦY BỎ</button>
+  </div>
+</div>
+
+<!-- SỬA USER -->
+<div id="edit-user-modal" class="hidden overlay-dark flex-center">
+  <div class="modal-box shadow-lux fade-in">
+    <h3 class="title-pink">Sửa: <span id="edit-u-name"></span></h3>
+    <input type="hidden" id="edit-u-old-id">
+    <input type="hidden" id="edit-u-old-pass">
+    <input type="text" id="edit-u-new-id" placeholder="ID (Không thể đổi)" disabled style="opacity:0.6;">
+    <input type="password" id="edit-u-pass" placeholder="Mật khẩu mới (tối thiểu 6 ký tự)">
+    <button class="btn-royal" onclick="saveUserEdit()">LƯU</button>
+    <button class="btn-text" onclick="toggleModal('edit-user-modal',false)">HỦY</button>
+  </div>
+</div>
+
+<!-- PIN BẢO MẬT -->
+<div id="clear-auth-modal" class="hidden overlay-dark flex-center">
+  <div class="modal-box shadow-lux fade-in">
+    <h3>MÃ PIN BẢO MẬT</h3>
+    <input type="password" id="clear-pin-input" placeholder="Nhập PIN">
+    <button class="btn-royal" style="background:#dc3545;" onclick="verifyClearPin()">XÁC NHẬN</button>
+    <button class="btn-text" onclick="toggleModal('clear-auth-modal',false)">HỦY</button>
+  </div>
+</div>
+
+<!-- QUẢN LÝ HỆ THỐNG -->
+<div id="clear-confirm-modal" class="hidden overlay-dark flex-center" style="z-index:100000;">
+  <div class="modal-box shadow-lux fade-in" style="text-align:center;padding:35px 25px;border-top:6px solid #dc3545;">
+    <div style="font-size:50px;margin-bottom:10px;">🛡️</div>
+    <h2 style="color:#dc3545;margin-bottom:12px;font-weight:900;">QUẢN LÝ HỆ THỐNG</h2>
+    <p style="font-size:14px;color:var(--text);margin-bottom:25px;line-height:1.5;">Chào Boss, hãy chọn thao tác bạn muốn thực hiện:</p>
+    <button class="btn-royal" style="background:#673AB7;margin-bottom:12px;border-radius:15px;" onclick="window.toggleModal('clear-confirm-modal',false); window.openChangePinModal();">ĐỔI MÃ PIN HỆ THỐNG</button>
+    <button class="btn-royal" style="background:#E91E63;margin-bottom:12px;border-radius:15px;" onclick="window.toggleModal('clear-confirm-modal',false); window.openAdminPasswordModal();">ĐỔI MẬT KHẨU ADMIN</button>
+    <div style="margin:15px 0;border-top:1px dashed var(--border);"></div>
+    <button class="btn-royal" style="background:#dc3545;margin-bottom:10px;" onclick="executeHardReset()">XÓA TOÀN BỘ DỮ LIỆU</button>
+    <button class="btn-text" onclick="toggleModal('clear-confirm-modal',false)">ĐÓNG LẠI</button>
+  </div>
+</div>
+
+<!-- HỖ TRỢ -->
+<div id="support-master-modal" class="hidden overlay-dark flex-center" style="z-index:99999;">
+  <div class="modal-box shadow-lux fade-in" style="padding:0;overflow:hidden;width:90%;max-width:400px;border-radius:25px;">
+    <div style="background:linear-gradient(135deg,var(--pink),#9C27B0);padding:25px 20px;color:white;position:relative;">
+      <button onclick="toggleModal('support-master-modal',false)" style="position:absolute;top:15px;right:15px;background:transparent;border:none;color:white;font-size:20px;cursor:pointer;">&#10005;</button>
+      <h3 style="margin:0;font-weight:900;font-size:20px;">TRUNG TÂM HỖ TRỢ</h3>
+    </div>
+    <div style="padding:25px 20px;">
+      <div id="support-step-1">
+        <button class="btn-royal" style="background:#1877F2;margin-bottom:12px;" onclick="showSupportStep('em xin LẠI-id')">EM QUÊN ID</button>
+        <button class="btn-royal" style="background:#FF9800;margin-bottom:20px;" onclick="showSupportStep('em xin LẠI mk')">EM QUÊN MẬT KHẨU</button>
+        <button class="btn-royal" style="background:#4CAF50;" onclick="showSupportStep('check-status')">TRA CỨU PHẢN HỒI</button>
+      </div>
+      <div id="support-step-2" class="hidden">
+        <h4 id="support-dynamic-title" style="color:var(--pink);margin-bottom:20px;">...</h4>
+        <input type="hidden" id="support-type-hidden">
+        <input type="text" id="support-fullname" placeholder="Họ Tên thật">
+        <input type="password" id="support-secret" placeholder="Tạo Mã Bí Mật (để tra cứu)">
+        <button class="btn-royal" onclick="submitSupportRequest()">GỬI YÊU CẦU</button>
+        <button class="btn-text" onclick="showSupportStep('menu')">QUAY LẠI</button>
+      </div>
+      <div id="support-step-3" class="hidden">
+        <h4 style="color:#4CAF50;margin-bottom:20px;">KẾT QUẢ TRA CỨU</h4>
+        <input type="text" id="check-fullname" placeholder="Họ Tên đã gửi">
+        <input type="password" id="check-secret" placeholder="Mã Bí Mật đã tạo">
+        <button class="btn-royal" style="background:#4CAF50;" onclick="checkSupportReply()">XEM</button>
+        <button class="btn-text" onclick="showSupportStep('menu')">QUAY LẠI</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ĐỔI MẬT KHẨU ADMIN (bảo mật 2 lớp - giữ tương thích) -->
+<div id="admin-pass-auth-modal" class="hidden overlay-dark flex-center">
+  <div class="modal-box shadow-lux fade-in">
+    <h3 style="color:var(--pink);">BẢO MẬT 2 LỚP</h3>
+    <input type="password" id="admin-pass-pin" placeholder="Mã PIN">
+    <button class="btn-royal" onclick="verifyAdminPassPin()">XÁC NHẬN PIN</button>
+    <button class="btn-text" onclick="toggleModal('admin-pass-auth-modal',false)">HỦY</button>
+  </div>
+</div>
+<div id="admin-pass-edit-modal" class="hidden overlay-dark flex-center">
+  <div class="modal-box shadow-lux fade-in">
+    <h3 style="color:var(--pink);">ĐỔI MẬT KHẨU BOSS</h3>
+    <input type="password" id="old-admin-pass" placeholder="Mật khẩu cũ">
+    <input type="password" id="new-admin-pass" placeholder="Mật khẩu MỚI">
+    <button class="btn-royal" onclick="changeAdminPass()">LƯU</button>
+    <button class="btn-text" onclick="toggleModal('admin-pass-edit-modal',false)">HỦY</button>
+  </div>
+</div>
+
+<!-- FILE INPUTS ẨN -->
+<input type="file" id="user-file" class="hidden" accept="image/*" onchange="uploadUserAvt()">
+<input type="file" id="chat-img-file" class="hidden" accept="image/*" onchange="uploadChatImage()">
+
+<!-- TẠO NHÓM -->
+<div id="create-group-modal" class="hidden overlay-dark flex-center" style="z-index:100000;">
+  <div class="modal-box shadow-lux fade-in">
+    <h3 class="title-pink" style="margin-bottom:10px;">TẠO NHÓM MỚI</h3>
+    <p style="font-size:14px;color:var(--text-light);margin-bottom:15px;">Hãy đặt một cái tên thật ngầu cho nhóm!</p>
+    <input type="text" id="new-group-name-input" placeholder="VD: Nhóm Học Tập..." value="Nhóm Học Tập">
+    <div style="display:flex;gap:10px;margin-top:15px;">
+      <button class="btn-text" onclick="toggleModal('create-group-modal',false)">HỦY</button>
+      <button class="btn-royal" onclick="confirmCreateGroup()">TẠO NHÓM</button>
+    </div>
+  </div>
+</div>
+
+<!-- CUSTOM ALERT -->
+<div id="custom-alert-modal" class="hidden overlay-dark flex-center" style="z-index:100000;">
+  <div class="modal-box shadow-lux fade-in" style="text-align:center;padding:40px 25px;border-top:6px solid #00e676;">
+    <div id="custom-alert-icon" style="font-size:70px;margin-bottom:20px;">✅</div>
+    <h2 id="custom-alert-title" style="color:#00e676;margin-bottom:12px;font-weight:900;letter-spacing:1px;">THÀNH CÔNG</h2>
+    <p id="custom-alert-message" style="font-size:16px;color:var(--text);margin-bottom:30px;line-height:1.6;font-weight:500;"></p>
+    <button class="btn-royal" style="background:#00e676;border-radius:15px;" onclick="toggleModal('custom-alert-modal',false)">ĐÃ HIỂU</button>
+  </div>
+</div>
+
+<!-- CUSTOM CONFIRM -->
+<div id="custom-confirm-modal" class="hidden overlay-dark flex-center" style="z-index:100000;">
+  <div class="modal-box shadow-lux fade-in" style="text-align:center;padding:30px 25px;border-top:6px solid var(--pink);">
+    <div style="font-size:50px;margin-bottom:15px;">❓</div>
+    <h3 id="custom-confirm-title" style="color:var(--pink);margin-bottom:10px;font-weight:900;letter-spacing:1px;">XÁC NHẬN</h3>
+    <p id="custom-confirm-message" style="font-size:15px;color:var(--text);margin-bottom:25px;font-weight:500;">Bạn có chắc chắn muốn thực hiện?</p>
+    <div style="display:flex;gap:10px;justify-content:center;">
+      <button class="btn-text" onclick="window.toggleModal('custom-confirm-modal',false)" style="width:45%;background:var(--border);border-radius:15px;color:var(--text-light);font-weight:bold;">HỦY</button>
+      <button id="custom-confirm-btn" class="btn-royal" style="width:55%;background:var(--pink);border-radius:15px;">ĐỒNG Ý</button>
+    </div>
+  </div>
+</div>
+
+<!-- ĐỔI PIN -->
+<div id="change-pin-modal" class="hidden overlay-dark flex-center" style="z-index:100000;">
+  <div class="modal-box shadow-lux fade-in" style="border-top:6px solid #673AB7;padding:30px 20px;">
+    <div style="font-size:50px;margin-bottom:15px;">🔑</div>
+    <h3 style="color:#673AB7;font-weight:900;">ĐỔI MÃ PIN BOSS</h3>
+    <p style="font-size:13px;color:var(--text-light);margin-bottom:20px;">Mã PIN mới dùng cho Bảo trì &amp; Xóa dữ liệu.</p>
+    <input type="password" id="new-clear-pin-input" placeholder="Nhập PIN mới" style="text-align:center;font-size:18px;border:2px solid #673AB7;">
+    <button class="btn-royal" style="background:#673AB7;margin-bottom:10px;" onclick="window.saveNewClearPin()">CẬP NHẬT</button>
+    <button class="btn-text" onclick="toggleModal('change-pin-modal',false)">HỦY</button>
+  </div>
+</div>
+
+<!-- ĐỔI MẬT KHẨU ADMIN MỚI -->
+<div id="admin-password-modal" class="hidden overlay-dark flex-center" style="z-index:100000;">
+  <div class="modal-box shadow-lux fade-in" style="border-top:6px solid #E91E63;padding:30px 20px;border-radius:25px;">
+    <div style="font-size:50px;margin-bottom:15px;">👤</div>
+    <h3 style="color:#E91E63;font-weight:900;">ĐỔI MẬT KHẨU ADMIN</h3>
+    <p style="font-size:13px;color:var(--text-light);margin-bottom:20px;">Mật khẩu này dùng để đăng nhập vào hệ thống.</p>
+    <input type="password" id="admin-old-pass" placeholder="Mật khẩu hiện tại" style="border:1px solid #E91E63;border-radius:15px;">
+    <input type="password" id="admin-new-pass" placeholder="Mật khẩu mới (ít nhất 6 ký tự)" style="border:1px solid #E91E63;border-radius:15px;">
+    <button class="btn-royal" style="background:#E91E63;margin-top:10px;" onclick="window.confirmChangeAdminPassword()">CẬP NHẬT</button>
+    <button class="btn-text" onclick="toggleModal('admin-password-modal',false)" style="margin-top:10px;font-weight:bold;">HỦY BỎ</button>
+  </div>
+</div>
+
+<!-- MENU TIN NHẮN (REACTION) -->
+<div id="msg-action-modal" class="hidden overlay-dark flex-center" style="z-index:100001;" onclick="toggleModal('msg-action-modal',false)">
+  <div class="modal-box shadow-lux fade-in" style="padding:20px;border-radius:30px;width:90%;max-width:340px;background:var(--card);display:flex;flex-direction:column;gap:15px;" onclick="event.stopPropagation()">
+    <div style="display:flex;justify-content:space-between;font-size:30px;background:var(--bg);padding:10px 15px;border-radius:20px;border:1px solid var(--border);">
+      <span style="cursor:pointer;" onclick="sendReaction('❤️')">❤️</span>
+      <span style="cursor:pointer;" onclick="sendReaction('😆')">😆</span>
+      <span style="cursor:pointer;" onclick="sendReaction('😮')">😮</span>
+      <span style="cursor:pointer;" onclick="sendReaction('😢')">😢</span>
+      <span style="cursor:pointer;" onclick="sendReaction('😡')">😡</span>
+      <span style="cursor:pointer;border-left:2px solid var(--border);padding-left:10px;" onclick="sendReaction('remove')">❌</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <button id="action-unsend-btn" class="btn-text" style="color:#dc3545;font-size:15px;background:rgba(220,53,69,0.1);border-radius:15px;padding:15px;font-weight:bold;">Thu hồi tin nhắn</button>
+      <button class="btn-text" style="color:var(--text);font-size:15px;background:var(--bg);border-radius:15px;padding:15px;font-weight:bold;border:1px solid var(--border);" onclick="toggleModal('msg-action-modal',false)">Trở về</button>
+    </div>
+  </div>
+</div>
+
+<!-- BIỆT DANH -->
+<div id="nickname-modal" class="hidden overlay-dark flex-center" style="z-index:100000;">
+  <div class="modal-box shadow-lux fade-in" style="border-top:6px solid var(--pink);padding:30px 20px;border-radius:25px;">
+    <div style="font-size:50px;margin-bottom:15px;">✏️</div>
+    <h3 style="color:var(--pink);font-weight:900;letter-spacing:1px;margin-bottom:5px;">ĐẶT BIỆT DANH</h3>
+    <p style="font-size:14px;color:var(--text-light);margin-bottom:20px;">Nhập biệt danh cho: <b id="nickname-target-name" style="color:var(--pink);">...</b></p>
+    <input type="text" id="nickname-input" placeholder="Ví dụ: Đệ tử ruột, Bạn thân..." style="border:2px solid var(--soft);border-radius:15px;padding:12px;margin-bottom:20px;text-align:center;outline:none;font-weight:bold;">
+    <div style="display:flex;gap:10px;justify-content:center;">
+      <button class="btn-text" onclick="window.toggleModal('nickname-modal',false)" style="width:40%;background:var(--border);border-radius:15px;font-weight:bold;">HỦY</button>
+      <button class="btn-royal" style="width:60%;border-radius:15px;" onclick="window.confirmSaveNickname()">LƯU LẠI</button>
+    </div>
+  </div>
+</div>
+
+<!-- MENU QUẢN LÝ TÀI KHOẢN -->
+<div id="user-action-modal" class="hidden overlay-dark flex-center" style="z-index:100000;">
+  <div class="modal-box shadow-lux fade-in" style="border-top:6px solid var(--pink);padding:30px 20px;border-radius:25px;position:relative;overflow:hidden;">
+    <button onclick="window.toggleModal('user-action-modal',false)" style="position:absolute;top:15px;right:15px;background:none;border:none;font-size:20px;color:var(--text-light);cursor:pointer;z-index:2;">&#10005;</button>
+    <div style="font-size:55px;margin-bottom:10px;">⚙️</div>
+    <h3 style="color:var(--pink);font-weight:900;letter-spacing:1px;margin-bottom:15px;text-transform:uppercase;">QUẢN LÝ TÀI KHOẢN</h3>
+    <div id="action-u-name" style="font-size:15px;font-weight:bold;margin-bottom:25px;color:var(--text);padding:12px;background:var(--bg);border-radius:15px;border:2px dashed var(--pink);">...</div>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <button id="btn-action-edit" class="btn-royal" style="background:linear-gradient(135deg,#1877F2,#0d61d1);">Sửa Thông Tin / Đổi Pass</button>
+      <button id="btn-action-lock" class="btn-royal" style="background:linear-gradient(135deg,#FF9800,#F57C00);">Khóa Tài Khoản</button>
+      <button id="btn-action-delete" class="btn-royal" style="background:linear-gradient(135deg,#dc3545,#c82333);">Xóa Vĩnh Viễn</button>
+    </div>
+  </div>
+</div>
+
+<!-- ĐIỂM DANH - CHỌN TRẠNG THÁI -->
+<div id="attendance-action-modal" class="hidden overlay-dark flex-center" style="z-index:100000;">
+  <div class="modal-box shadow-lux fade-in" style="border-top:6px solid #4CAF50;padding:30px 20px;border-radius:25px;width:90%;max-width:350px;position:relative;">
+    <button onclick="window.toggleModal('attendance-action-modal',false)" style="position:absolute;top:15px;right:15px;background:none;border:none;font-size:20px;color:var(--text-light);">&#10005;</button>
+    <div style="font-size:50px;margin-bottom:10px;">🙋</div>
+    <h3 style="color:#4CAF50;font-weight:900;">ĐIỂM DANH</h3>
+    <p id="att-target-name" style="font-size:14px;font-weight:bold;margin-bottom:20px;padding:10px;background:var(--soft);border-radius:10px;border:1px dashed #4CAF50;">...</p>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <button class="btn-royal" style="background:#4CAF50;" onclick="window.saveAttendance('co_mat')">CÓ MẶT</button>
+      <button class="btn-royal" style="background:#FF9800;" onclick="window.saveAttendance('nghi_phep')">CÓ PHÉP</button>
+      <button class="btn-royal" style="background:#dc3545;" onclick="window.saveAttendance('nghi')">KHÔNG PHÉP</button>
+      <button class="btn-text" style="color:var(--text-light);font-size:12px;margin-top:5px;" onclick="window.saveAttendance('clear')">Bỏ chọn</button>
+    </div>
+  </div>
+</div>
+
+<!-- THỐNG KÊ ĐIỂM DANH -->
+<div id="attendance-stats-modal" class="hidden overlay-dark flex-center" style="z-index:100000;">
+  <div class="modal-box shadow-lux fade-in" style="border-top:6px solid #1877F2;padding:20px;border-radius:20px;width:95%;max-width:500px;max-height:85vh;overflow-y:auto;position:relative;">
+    <button onclick="window.toggleModal('attendance-stats-modal',false)" style="position:absolute;top:15px;right:15px;background:none;border:none;font-size:20px;">&#10005;</button>
+    <h3 style="color:#1877F2;margin-bottom:15px;">THỐNG KÊ ĐIỂM DANH</h3>
+    <p style="font-size:11px;color:#888;margin-bottom:15px;">Những em vắng không phép ≥ 3 buổi sẽ bị bôi đỏ cảnh báo!</p>
+    <div id="att-stats-body"></div>
+  </div>
+</div>
+
+<!-- QUÉT QR ĐIỂM DANH -->
+<div id="qr-scanner-modal" class="hidden overlay-dark flex-center" style="z-index:100000;">
+  <div class="modal-box shadow-lux fade-in" style="padding:20px;border-radius:20px;width:95%;max-width:400px;text-align:center;position:relative;background:#fff;">
+    <button onclick="window.closeQRScanner()" style="position:absolute;top:10px;right:15px;background:none;border:none;font-size:20px;z-index:10;">&#10005;</button>
+    <h3 style="color:#673AB7;margin-bottom:15px;">QUÉT THẺ HỌC SINH</h3>
+    <div id="qr-reader" style="width:100%;min-height:300px;border-radius:15px;overflow:hidden;"></div>
+    <p style="font-size:12px;color:#888;margin-top:10px;">Đưa mã QR của học sinh vào khung hình.</p>
+  </div>
+</div>
+
+<!-- TẠO TUẦN MỚI -->
+<div id="create-week-modal" class="hidden overlay-dark flex-center" style="z-index:100000;">
+  <div class="modal-box shadow-lux fade-in" style="border-top:6px solid #4CAF50;padding:25px 20px;border-radius:20px;width:90%;max-width:350px;position:relative;">
+    <button onclick="window.toggleModal('create-week-modal',false)" style="position:absolute;top:15px;right:15px;background:none;border:none;font-size:20px;color:var(--text-light);">&#10005;</button>
+    <h3 style="color:#4CAF50;margin-bottom:10px;font-weight:900;">TẠO TUẦN MỚI</h3>
+    <p style="font-size:12px;color:var(--text-light);margin-bottom:15px;">Nhập tên cho tuần hoặc buổi học tiếp theo:</p>
+    <input type="text" id="new-week-name-input" placeholder="VD: Tuần 5, Buổi 10..." style="border:2px solid var(--border);border-radius:10px;padding:12px;outline:none;font-weight:bold;text-align:center;color:var(--pink);font-size:16px;">
+    <div style="display:flex;gap:10px;margin-top:15px;">
+      <button class="btn-text" onclick="window.toggleModal('create-week-modal',false)" style="background:var(--border);border-radius:10px;font-weight:bold;width:40%;">HỦY</button>
+      <button class="btn-royal" style="background:#4CAF50;border-radius:10px;width:60%;" onclick="window.confirmCreateWeek()">TẠO NGAY</button>
+    </div>
+  </div>
+</div>
+
+<script src="script.js"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js')
+        .then(reg => console.log('SW hoạt động!', reg))
+        .catch(err => console.error('Lỗi SW:', err));
+    });
+  }
+</script>
+</body>
+</html>
