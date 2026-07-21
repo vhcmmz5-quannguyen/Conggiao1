@@ -1,0 +1,22 @@
+{
+  "id": "/",
+  "name": "Lớp Học Công Giáo",
+  "short_name": "Lớp Học",
+  "description": "Ứng dụng lớp học Công Giáo để quản lý điểm số, điểm danh và trò chuyện nội bộ.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "background_color": "#05071a",
+  "theme_color": "#05071a",
+  "lang": "vi",
+  "dir": "ltr",
+  "prefer_related_applications": false,
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
