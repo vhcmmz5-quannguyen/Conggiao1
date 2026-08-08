@@ -1,0 +1,47 @@
+{
+  "id": "/app.html",
+  "name": "Lớp Học Công Giáo",
+  "short_name": "Lớp Học",
+  "description": "Ứng dụng lớp học Công Giáo — quản lý điểm số, điểm danh, đóng tiền và trò chuyện nội bộ. Bảo mật, đồng bộ thời gian thực.",
+  "start_url": "/app.html?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "background_color": "#05071a",
+  "theme_color": "#05071a",
+  "lang": "vi",
+  "dir": "ltr",
+  "categories": ["education", "productivity", "social"],
+  "prefer_related_applications": false,
+  "launch_handler": { "client_mode": ["navigate-existing", "auto"] },
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Đăng nhập nhanh",
+      "short_name": "Đăng nhập",
+      "description": "Mở màn hình đăng nhập",
+      "url": "/app.html?shortcut=login",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Sổ điểm",
+      "short_name": "Điểm",
+      "description": "Xem sổ điểm lớp học",
+      "url": "/app.html?shortcut=grades",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Chỉnh Nội quy (Admin)",
+      "short_name": "Nội quy",
+      "description": "Trang chỉnh sửa nội quy dành cho quản trị viên",
+      "url": "/app.html?shortcut=rules-admin",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ]
+}
